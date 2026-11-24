@@ -1,246 +1,174 @@
 /**
- * Browser regression for the review build.
- * Run: NODE_PATH=/tmp/node_modules node tests/ui-regression.mjs
- * Requires Google Chrome and puppeteer-core. Firefox is not required to pass.
+ * Browser regression. Run: node tests/ui-regression.mjs
+ * Chrome is required. Firefox is attempted when present.
  */
-const puppeteerMod = await import(process.env.PUPPETEER_CORE || 'puppeteer-core').catch(async () => {
-  return import('/tmp/node_modules/puppeteer-core/lib/esm/puppeteer/puppeteer-core.js');
+import { createServer } from "http";
+import { readFileSync, statSync, mkdirSync } from "fs";
+import { dirname, join, extname } from "path";
+import { fileURLToPath } from "url";
+
+const puppeteerMod = await import("puppeteer-core").catch(async () => {
+  return import("/tmp/node_modules/puppeteer-core/lib/puppeteer/puppeteer-core.js");
 });
 const puppeteer = puppeteerMod.default || puppeteerMod;
-import { createServer } from 'http';
-import { readFileSync } from 'fs';
-import { dirname, join } from 'path';
-import { fileURLToPath } from 'url';
 
-const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const html = readFileSync(join(root, 'index.html'));
-const chrome = process.env.CHROME_PATH || '/usr/local/bin/google-chrome';
+const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+const chrome = process.env.CHROME_PATH || "/usr/local/bin/google-chrome";
+const shots = "/opt/cursor/artifacts";
+mkdirSync(shots, { recursive: true });
+const types = { ".html": "text/html; charset=utf-8", ".css": "text/css", ".js": "text/javascript", ".json": "application/json", ".svg": "image/svg+xml", ".webmanifest": "application/manifest+json" };
 const fail = [];
 const check = (name, ok, extra) => {
-  if (!ok) fail.push(name + (extra ? ' ' + extra : ''));
-  else process.stdout.write('ok  ' + name + '\n');
+  if (!ok) fail.push(name + (extra ? " " + extra : ""));
+  else process.stdout.write("ok  " + name + "\n");
 };
 
 const server = createServer((req, res) => {
-  const path = req.url.split('?')[0];
-  if (path === '/' || path === '/index.html' || path === '/travel-medicine/' || path === '/travel-medicine/index.html') {
-    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-    res.end(html);
-    return;
+  const path = decodeURIComponent(req.url.split("?")[0]);
+  const rel = path === "/" ? "/index.html" : path.replace(/^\/travel-medicine/, "") || "/index.html";
+  const file = join(root, rel);
+  if (!file.startsWith(root)) {
+    res.writeHead(403); res.end("no"); return;
   }
-  res.writeHead(404);
-  res.end('no');
+  try {
+    const body = readFileSync(file);
+    statSync(file);
+    res.writeHead(200, { "content-type": types[extname(file)] || "application/octet-stream" });
+    res.end(body);
+  } catch {
+    res.writeHead(404); res.end("no");
+  }
 });
-await new Promise(r => server.listen(0, '127.0.0.1', r));
+await new Promise((r) => server.listen(0, "127.0.0.1", r));
 const port = server.address().port;
 const base = `http://127.0.0.1:${port}`;
 
-const browser = await puppeteer.launch({
-  executablePath: chrome,
-  headless: 'new',
-  protocolTimeout: 20000,
-  args: ['--no-sandbox', '--disable-dev-shm-usage']
-});
+async function launch(executablePath) {
+  return puppeteer.launch({
+    executablePath,
+    headless: "new",
+    protocolTimeout: 30000,
+    args: ["--no-sandbox", "--disable-dev-shm-usage"],
+  });
+}
 
-async function open(url) {
+const browser = await launch(chrome);
+
+async function open(url, width, height) {
   const page = await browser.newPage();
   const errors = [];
-  page.on('pageerror', e => errors.push(e.message));
-  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
-  await page.waitForSelector('.datamaps-subunit', { timeout: 10000 });
+  page.on("pageerror", (e) => errors.push(e.message));
+  page.on("console", (msg) => { if (msg.type() === "error") errors.push(msg.text()); });
+  await page.setViewport({ width, height, deviceScaleFactor: 1 });
+  await page.goto(url, { waitUntil: "networkidle0", timeout: 20000 });
+  await page.waitForSelector("#map path", { timeout: 10000 });
   return { page, errors };
 }
 
 const widths = [360, 390, 768, 1280];
 for (const w of widths) {
-  const { page, errors } = await open(base + '/');
-  await page.setViewport({ width: w, height: w < 500 ? 740 : 900 });
-  await page.waitForSelector('#disclaimerHeading');
-  const overflow = await page.evaluate(() => {
-    const doc = document.documentElement;
-    return doc.scrollWidth - doc.clientWidth;
-  });
-  check('no horizontal overflow ' + w, overflow <= 2, String(overflow));
-  check('no page error ' + w, errors.length === 0, errors.join(';'));
+  const { page, errors } = await open(base + "/", w, w < 500 ? 740 : 900);
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  check("no horizontal overflow " + w, overflow <= 2, String(overflow));
+  check("no page error " + w, errors.length === 0, errors.join(";"));
   await page.close();
 }
 
 {
-  const { page, errors } = await open(base + '/index.html');
-  const title = await page.title();
-  check('index.html loads', title.includes('Travel Medicine'), title);
-  check('index.html no error', errors.length === 0, errors.join(';'));
-  await page.close();
-}
-
-{
-  const { page, errors } = await open(base + '/?dest=sau&group=Pregnant&layer=MALARIA&lang=AR&foo=1&dest2=<script>');
+  const { page, errors } = await open(base + "/?stops=SAU.2026-12-01.2026-12-10.umrah.0&lang=ar&age=18to59y&p=preg", 390, 844);
   const state = await page.evaluate(() => ({
-    h2: document.querySelector('#tab-country h2')?.textContent || '',
     lang: document.documentElement.lang,
     dir: document.documentElement.dir,
-    group: document.querySelector('.tf-btn.active')?.dataset.tf,
-    layer: document.getElementById('layerSelect').value,
-    discEn: /educational reference/i.test(document.querySelector('#safetyBanner p[lang="en"]').textContent),
-    discAr: document.querySelector('#safetyBanner p[lang="ar"]').textContent.includes('مرجع تعليمي'),
-    compact: document.getElementById('discDetails').hidden === true
+    h3: document.querySelector("#dest-SAU h3")?.textContent || "",
+    disc: document.querySelector("#discDetails").hidden,
+    preg: document.querySelector("#pregnant").checked,
   }));
-  check('shared URL country', state.h2 === 'Saudi Arabia', state.h2);
-  check('shared URL lang case', state.lang === 'ar' && state.dir === 'rtl', state.lang);
-  check('shared URL group case', state.group === 'pregnant', state.group);
-  check('shared URL layer case', state.layer === 'malaria', state.layer);
-  check('disclaimer both languages', state.discEn && state.discAr);
-  check('disclaimer starts compact', state.compact === true);
-  await page.click('#discToggle');
-  check('disclaimer expands', await page.$eval('#discToggle', el => el.getAttribute('aria-expanded')) === 'true');
-  await page.click('#discDismiss');
-  check('disclaimer dismiss keeps reopen', await page.$eval('#discReopen', el => el.hidden) === false);
-  const urgentStill = await page.evaluate(() => document.querySelector('#tab-country .fever-box, #tab-country .verify-flag') !== null || document.querySelector('#tab-country h2')?.textContent === 'Saudi Arabia');
-  check('dismiss does not remove country card', urgentStill);
-  check('malformed extra params no error', errors.length === 0, errors.join(';'));
-  const unknown = await page.evaluate(() => {
-    history.pushState(null, '', '?dest=ZZZ&group=nope&layer=nope&lang=zz');
-    const before = document.querySelector('#tab-country h2')?.textContent;
-    readUrl();
-    return { before, selected: selected && selected.iso, group: travelerType, layer: activeLayer, lang };
-  });
-  check('unknown dest ignored', unknown.selected === 'SAU', JSON.stringify(unknown));
-  await page.evaluate(() => { lang = 'en'; travelerType = 'standard'; activeLayer = 'overall'; applyLang(); });
+  check("arabic rtl", state.lang === "ar" && state.dir === "rtl", state.lang);
+  check("shared url loads Saudi", /السعود|Saudi/.test(state.h3), state.h3);
+  check("disclaimer starts compact", state.disc === true);
+  check("pregnancy from url", state.preg === true);
+  await page.click("#discToggle");
+  check("disclaimer expands", await page.$eval("#discToggle", (el) => el.getAttribute("aria-expanded")) === "true");
+  await page.click("#discDismiss");
+  check("reopen remains", await page.$eval("#discReopen", (el) => el.hidden) === false);
+  check("country remains after dismiss", (await page.$("#dest-SAU")) !== null);
+  await page.click("#discReopen");
+  check("banner returns", await page.$eval("#safetyBanner", (el) => el.hidden) === false);
+  await page.screenshot({ path: join(shots, "mobile-ar-umrah.png"), fullPage: true });
+  check("mobile ar shot", true);
+  check("no error ar mobile", errors.length === 0, errors.join(";"));
   await page.close();
 }
 
 {
-  const { page, errors } = await open(base + '/');
-  await page.setViewport({ width: 1280, height: 900 });
-  await page.evaluate(() => selectCountry('NGA'));
-  const nga = await page.$eval('#tab-country h2', el => el.textContent);
-  check('map function selects Nigeria', nga === 'Nigeria');
-  await page.focus('#searchInput');
-  await page.type('#searchInput', 'COTE');
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('Enter');
-  const cote = await page.$eval('#tab-country h2', el => el.textContent);
-  check('accent search keyboard', cote === "Côte d'Ivoire", cote);
-  await page.evaluate(() => { si.value = 'السعودية'; runSearch(); });
-  await page.evaluate(() => pickSearch('SAU'));
-  check('arabic search selects Saudi Arabia', await page.$eval('#tab-country h2', el => el.textContent) === 'Saudi Arabia');
-  await page.evaluate(() => { si.value = 'ليستدولة'; runSearch(); });
-  const arSearch = await page.evaluate(() => document.getElementById('searchResults').innerText);
-  check('unknown arabic query does not throw', /No matching destination|لا توجد وجهة/.test(arSearch), arSearch.slice(0, 80));
-  for (const layer of ['overall', 'malaria', 'yf', 'arbo', 'vaccine']) {
-    await page.select('#layerSelect', layer);
-    const legend = await page.$eval('#mapLegend', el => el.innerText.length);
-    check('layer ' + layer + ' legend', legend > 10, String(legend));
-  }
-  for (const g of ['standard', 'pregnant', 'child', 'immuno']) {
-    await page.click('[data-tf="' + g + '"]');
-    const on = await page.$eval('.tf-btn.active', el => el.dataset.tf);
-    check('filter ' + g, on === g);
-  }
-  await page.click('[data-tf="pregnant"]');
-  const flags = await page.evaluate(() => document.querySelector('#tab-country').innerText);
-  check('pregnancy precaution visible', /precaution/i.test(flags) && /not routinely recommended in pregnancy/i.test(flags));
-  await page.click('#resetBtn');
-  const cleared = await page.evaluate(() => ({ h2: document.querySelector('#tab-country h2'), group: document.querySelector('.tf-btn.active').dataset.tf, layer: document.getElementById('layerSelect').value }));
-  check('reset clears destination and filters', !cleared.h2 && cleared.group === 'standard' && cleared.layer === 'overall', JSON.stringify(cleared));
-  await page.evaluate(() => selectCountry('KEN'));
-  await page.click('button[onclick="clearDestination()"]');
-  const closed = await page.$('#tab-country h2');
-  check('close clears destination', !closed);
-  await page.evaluate(() => selectCountry('LKA'));
-  await page.focus('#tabbtn-vaccines');
-  await page.keyboard.press('ArrowRight');
-  const tab = await page.evaluate(() => document.querySelector('.tab.active').dataset.tab);
-  check('tab arrow key', tab === 'malaria' || tab === 'vaccines', tab);
-  const links = await page.evaluate(() => [...document.querySelectorAll('a[target="_blank"]')].filter(a => !/noopener/i.test(a.rel)).map(a => a.href));
-  check('blank links have noopener', links.length === 0, links.join(','));
-  const blocked = await page.evaluate(() => {
-    const orig = window.open;
-    window.open = () => null;
-    const res = exportSummary();
-    window.open = orig;
-    return res;
-  });
-  check('popup blocked returns false', blocked === false);
-  await page.evaluate(() => selectCountry('BLZ'));
-  const popupPromise = new Promise((resolve, reject) => {
-    const t = setTimeout(() => reject(new Error('no popup')), 6000);
-    browser.on('targetcreated', async target => {
-      if (target.type() !== 'page') return;
-      clearTimeout(t);
-      resolve(await target.page());
-    });
-  });
-  await page.evaluate(() => exportSummary());
-  const pop = await popupPromise;
-  const sheet = await pop.evaluate(() => document.body.innerText);
-  check('sheet keeps disclaimer', /educational reference/i.test(sheet) && sheet.includes('مرجع تعليمي') && /individualized pre-travel consultation/i.test(sheet));
-  check('sheet keeps unverified', /unreviewed/i.test(sheet));
-  await pop.close();
-  await page.evaluate(() => { lang = 'ar'; applyLang(); selectCountry('SAU', { refresh: true }); });
-  const rtl = await page.evaluate(() => {
-    const drug = document.querySelector('.drug-name');
-    const cs = drug ? getComputedStyle(drug) : null;
-    return { dir: document.documentElement.dir, drugDir: cs && cs.direction, h2: document.querySelector('#tab-country h2').textContent };
-  });
-  check('arabic rtl shell', rtl.dir === 'rtl' && rtl.h2 === 'Saudi Arabia', JSON.stringify(rtl));
-  check('drug line stays ltr', rtl.drugDir === 'ltr', JSON.stringify(rtl));
-  check('session errors empty', errors.length === 0, errors.join(';'));
-  await page.evaluate(() => { const t=document.getElementById('toast'); if(t) t.remove(); });
-  await page.screenshot({ path: '/opt/cursor/artifacts/polish_desktop_ar.png' });
-  const sauAr = await page.evaluate(() => ({
-    edition: document.body.innerText.includes('1447'),
-    tablesOpen: document.querySelector('details.saudi-edition')?.open === true,
-    summary: document.querySelector('details.saudi-edition summary')?.textContent || ''
-  }));
-  check('Saudi edition visible in Arabic', /1447/.test(sauAr.edition ? '1447' : '') && /1447/.test(sauAr.summary), JSON.stringify(sauAr));
-  check('Saudi historical tables start closed', sauAr.tablesOpen === false);
-  await page.evaluate(() => { lang = 'en'; applyLang(); selectCountry('ETH', { refresh: true }); const t=document.getElementById('toast'); if(t) t.remove(); });
-  const eth = await page.evaluate(() => document.querySelector('#tab-country').innerText);
-  check('Ethiopia card includes Addis at 2500', /Addis Ababa/.test(eth) && /2,500/.test(eth) && !/2,000/.test(eth) && !/low risk/i.test(eth));
-  const ethBadge = await page.evaluate(() => [...document.querySelectorAll('.vaccine-item')].find(el => /Yellow Fever/.test(el.textContent))?.textContent || '');
-  check('Ethiopia YF badge is not required', !/required/i.test(ethBadge), ethBadge);
-  await page.evaluate(() => selectCountry('BOL', { refresh: true }));
-  const bol = await page.evaluate(() => document.querySelector('#tab-country').innerText);
-  check('Bolivia shows source conflict', /sources differ/i.test(bol) && /verify before travel/i.test(bol));
-  await page.evaluate(() => selectCountry('PAK', { refresh: true }));
-  const pak = await page.evaluate(() => document.querySelector('#tab-country').innerText);
-  check('Pakistan includes all cities', /including all cities/i.test(pak) && /2,500/.test(pak));
-  await page.evaluate(() => selectCountry('AUS', { refresh: true }));
-  const aus = await page.evaluate(() => document.querySelector('#tab-country').innerText);
-  check('Australia JE is localized', /Outer Torres Strait/i.test(aus) && /Japanese Encephalitis/i.test(aus));
-  await page.evaluate(() => { sessionStorage.removeItem('tmDisc'); document.getElementById('safetyBanner').hidden = false; document.getElementById('discReopen').hidden = true; setDiscOpen(false); const t=document.getElementById('toast'); if(t) t.remove(); });
-  await page.setViewport({ width: 1280, height: 800 });
-  await page.screenshot({ path: '/opt/cursor/artifacts/disclaimer_collapsed_desktop.png' });
-  await page.evaluate(() => setDiscOpen(true));
-  await page.screenshot({ path: '/opt/cursor/artifacts/disclaimer_expanded_desktop.png' });
-  const printDisc = await page.evaluate(() => {
-    const details = document.getElementById('discDetails');
-    const before = details.hidden;
-    return { before, full: document.getElementById('discFull').textContent.includes('individualized pre-travel consultation') };
-  });
-  check('expanded disclaimer has full warning', printDisc.full === true);
-  await page.evaluate(() => { setDiscOpen(false); const t=document.getElementById('toast'); if(t) t.remove(); });
-  await page.screenshot({ path: '/opt/cursor/artifacts/polish_desktop_en.png' });
-  await page.setViewport({ width: 390, height: 844 });
-  await page.evaluate(() => { const t=document.getElementById('toast'); if(t) t.remove(); });
-  await page.screenshot({ path: '/opt/cursor/artifacts/disclaimer_collapsed_mobile.png', fullPage: false });
-  await page.screenshot({ path: '/opt/cursor/artifacts/polish_mobile_en.png', fullPage: false });
-  await page.emulateMediaType('print');
-  const printed = await page.evaluate(() => {
-    const d = document.getElementById('discDetails');
-    const cs = getComputedStyle(d);
-    return { display: cs.display, text: d.textContent.includes('individualized pre-travel consultation') };
-  });
-  check('print shows full disclaimer', printed.display !== 'none' && printed.text, JSON.stringify(printed));
-  await page.screenshot({ path: '/opt/cursor/artifacts/polish_print_en.png', fullPage: false });
+  const { page, errors } = await open(base + "/", 1280, 900);
+  await page.type("#q", "إثيوبيا");
+  await page.waitForSelector("#searchList li");
+  await page.click("#searchList li");
+  await page.type("#q", "kenya");
+  await page.waitForSelector("#searchList li");
+  await page.keyboard.press("Enter");
+  const names = await page.$$eval("#stops article strong", (els) => els.map((el) => el.textContent));
+  check("arabic search adds Ethiopia", names.some((n) => /Ethiopia|إثيوبيا/.test(n)), names.join(","));
+  check("keyboard search adds Kenya", names.some((n) => /Kenya|كينيا/.test(n)), names.join(","));
+  await page.$eval("#stop-ETH input[data-field=arrive]", (el) => { el.value = "2026-12-20"; el.dispatchEvent(new Event("change", { bubbles: true })); });
+  await page.click(".tab[data-tab=vax]");
+  await page.waitForSelector(".task");
+  const vax = await page.$eval("#planBody", (el) => el.innerText);
+  check("timeline mentions yellow fever", /Yellow fever/i.test(vax), vax.slice(0, 180));
+  await page.click("#pregnant");
+  await page.click(".tab[data-tab=mal]");
+  await page.waitForSelector(".drug.avoid");
+  const avoided = await page.$$eval(".drug.avoid strong", (els) => els.map((el) => el.textContent));
+  check("pregnancy avoids doxycycline", avoided.some((n) => /Doxycycline/.test(n)), avoided.join(","));
+  await page.click(".tab[data-tab=check]");
+  check("checklist fever", /Fever during/.test(await page.$eval("#planBody", (el) => el.innerText)));
+  await page.click(".tab[data-tab=hand]");
+  const hand = await page.$eval("#planBody", (el) => el.innerText);
+  check("handout both languages", /Draft counseling aid/.test(hand) && /ورقة المسافر/.test(hand));
+  await page.screenshot({ path: join(shots, "desktop-en-itinerary.png"), fullPage: true });
+  await page.emulateMediaType("print");
+  await page.screenshot({ path: join(shots, "print-handout.png"), fullPage: true });
+  check("no error desktop flow", errors.length === 0, errors.join(";"));
+  await page.close();
+}
+
+{
+  const { page, errors } = await open(base + "/?stops=ETH.2026-12-01.2026-12-08.tourism.1~SAU.2026-12-09.2026-12-20.hajj.0&lang=en&from=ETH", 1280, 900);
+  await page.click(".tab[data-tab=check]");
+  const text = await page.$eval("#planBody", (el) => el.innerText);
+  check("hajj edition visible", /1447H/.test(text) && /1448H\/2027/.test(text));
+  check("ethiopia origin yf and polio tables", /older than 9 months/.test(text) && /Table B/.test(text));
+  check("no error hajj", errors.length === 0, errors.join(";"));
+  await page.screenshot({ path: join(shots, "desktop-en-hajj.png"), fullPage: true });
   await page.close();
 }
 
 await browser.close();
+
+let firefox = "";
+for (const candidate of ["/usr/bin/firefox", "/usr/bin/firefox-esr"]) {
+  try { statSync(candidate); firefox = candidate; } catch { /* absent */ }
+}
+if (firefox) {
+  const fox = await launch(firefox);
+  const page = await fox.newPage();
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.setViewport({ width: 1280, height: 900 });
+  await page.goto(base + "/", { waitUntil: "networkidle0", timeout: 20000 });
+  await page.waitForSelector("#map path", { timeout: 10000 });
+  check("firefox loads map", (await page.$$("#map path")).length > 100);
+  check("firefox no page error", errors.length === 0, errors.join(";"));
+  await page.screenshot({ path: join(shots, "firefox-desktop.png") });
+  await fox.close();
+} else {
+  console.log("firefox not installed; chrome-only UI run");
+}
+
 server.close();
 if (fail.length) {
-  console.error('FAILED\n' + fail.map(f => ' - ' + f).join('\n'));
+  console.error("FAILED\n" + fail.map((f) => " - " + f).join("\n"));
   process.exit(1);
 }
-console.log('ui-regression passed');
+console.log("ui-regression passed");

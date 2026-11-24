@@ -1,0 +1,13 @@
+{
+  "name": "Travel consult desk",
+  "short_name": "Travel consult",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f3ecdf",
+  "theme_color": "#1b2430",
+  "lang": "en",
+  "icons": [
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

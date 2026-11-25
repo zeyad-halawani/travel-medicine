@@ -1,0 +1,6 @@
+{
+  "name": "travel-consult-desk",
+  "private": true,
+  "type": "module",
+  "description": "Static clinician travel-medicine desk. GitHub Pages serves these files; no build step."
+}

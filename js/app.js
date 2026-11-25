@@ -37,6 +37,79 @@ function esc(s) {
   return String(s ?? "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
 }
 
+const ISO2 = {
+  NGA: "NG", KEN: "KE", TZA: "TZ", ETH: "ET", COD: "CD", GHA: "GH", ZAF: "ZA", TUN: "TN", MAR: "MA", EGY: "EG",
+  UGA: "UG", SEN: "SN", CIV: "CI", ZMB: "ZM", ZWE: "ZW", BWA: "BW", MOZ: "MZ", RWA: "RW", IND: "IN", NPL: "NP",
+  PAK: "PK", LKA: "LK", BGD: "BD", BTN: "BT", THA: "TH", VNM: "VN", IDN: "ID", PHL: "PH", KHM: "KH", MMR: "MM",
+  LAO: "LA", MYS: "MY", CHN: "CN", JPN: "JP", KOR: "KR", BRA: "BR", PER: "PE", COL: "CO", BOL: "BO", ECU: "EC",
+  ARG: "AR", CHL: "CL", VEN: "VE", MEX: "MX", CRI: "CR", PAN: "PA", GTM: "GT", CUB: "CU", DOM: "DO", HTI: "HT",
+  JAM: "JM", SAU: "SA", ARE: "AE", YEM: "YE", JOR: "JO", IRN: "IR", TUR: "TR", IRQ: "IQ", GBR: "GB", FRA: "FR",
+  DEU: "DE", ITA: "IT", ESP: "ES", USA: "US", CAN: "CA", AUS: "AU", NZL: "NZ", RUS: "RU", PNG: "PG", FJI: "FJ",
+  PRT: "PT", IRL: "IE", NLD: "NL", BEL: "BE", LUX: "LU", CHE: "CH", AUT: "AT", DNK: "DK", NOR: "NO", SWE: "SE",
+  FIN: "FI", ISL: "IS", GRC: "GR", MLT: "MT", CYP: "CY", POL: "PL", CZE: "CZ", SVK: "SK", HUN: "HU", ROU: "RO",
+  BGR: "BG", HRV: "HR", SVN: "SI", SRB: "RS", BIH: "BA", MNE: "ME", MKD: "MK", ALB: "AL", UKR: "UA", BLR: "BY",
+  LTU: "LT", LVA: "LV", EST: "EE", MDA: "MD", GEO: "GE", ARM: "AM", AZE: "AZ", KAZ: "KZ", UZB: "UZ", TKM: "TM",
+  KGZ: "KG", TJK: "TJ", AFG: "AF", MNG: "MN", KWT: "KW", QAT: "QA", BHR: "BH", OMN: "OM", LBN: "LB", SYR: "SY",
+  ISR: "IL", PSE: "PS", MLI: "ML", NER: "NE", BFA: "BF", TCD: "TD", SDN: "SD", SSD: "SS", CMR: "CM", CAF: "CF",
+  GIN: "GN", SLE: "SL", LBR: "LR", TGO: "TG", BEN: "BJ", GAB: "GA", COG: "CG", AGO: "AO", MWI: "MW", BDI: "BI",
+  GMB: "GM", GNB: "GW", MRT: "MR", SOM: "SO", ERI: "ER", DJI: "DJ", NAM: "NA", MDG: "MG", LSO: "LS", SWZ: "SZ",
+  MUS: "MU", SYC: "SC", CPV: "CV", COM: "KM", DZA: "DZ", LBY: "LY", MDV: "MV", BRN: "BN", SGP: "SG", TLS: "TL",
+  TWN: "TW", HKG: "HK", PRK: "KP", NIC: "NI", HND: "HN", SLV: "SV", BLZ: "BZ", PRY: "PY", URY: "UY", GUY: "GY",
+  SUR: "SR", TTO: "TT", BRB: "BB", BHS: "BS", PRI: "PR", SLB: "SB", VUT: "VU", WSM: "WS", TON: "TO", NCL: "NC",
+  PYF: "PF", KIR: "KI"
+};
+
+function flagEmoji(iso) {
+  const iso2 = ISO2[iso];
+  if (!iso2) return "🌐";
+  return [...iso2].map((ch) => String.fromCodePoint(127397 + ch.charCodeAt(0))).join("");
+}
+
+const TOPIC_CHIP = {
+  je: ["Japanese encephalitis", "التهاب الدماغ الياباني"],
+  rabies: ["Rabies", "السعار"],
+  dengue: ["Dengue", "ضنك"],
+  schisto: ["Schistosomiasis", "بلهارسيا"],
+  cholera: ["Cholera", "كوليرا"],
+  chik: ["Chikungunya", "شيكونغونيا"],
+  typhoid: ["Typhoid", "تيفوئيد"],
+  men: ["Meningococcal", "مكورات سحائية"],
+  polio: ["Polio", "شلل الأطفال"],
+  tbe: ["Tick-borne encephalitis", "التهاب الدماغ المنقول بالقراد"]
+};
+
+const BAND_AR = { present: "مناطق مذكورة", limited: "محدودة", none: "بلا وقاية روتينية", unknown: "غير محسومة" };
+
+function showStep(n) {
+  state.step = n;
+  for (let i = 1; i <= 3; i += 1) {
+    const panel = document.getElementById(`panel${i}`);
+    const btn = document.getElementById(`stepBtn${i}`);
+    if (!panel || !btn) return;
+    const on = i === n;
+    panel.hidden = !on;
+    btn.classList.toggle("is-on", on);
+    btn.classList.toggle("is-done", i < n);
+    btn.setAttribute("aria-current", on ? "step" : "false");
+  }
+  const bar = document.getElementById("progressBar");
+  const meter = document.getElementById("progress");
+  if (bar) bar.style.width = `${(n / 3) * 100}%`;
+  if (meter) meter.setAttribute("aria-valuenow", String(n));
+}
+
+function applyTheme(theme) {
+  if (theme === "dark") document.documentElement.dataset.theme = "dark";
+  else delete document.documentElement.dataset.theme;
+  const btn = document.getElementById("themeToggle");
+  if (btn) {
+    const dark = theme === "dark";
+    btn.setAttribute("aria-pressed", String(dark));
+    btn.textContent = dark ? t("light") : t("dark");
+  }
+  try { localStorage.setItem("tm-theme", theme); } catch { /* private mode */ }
+}
+
 function norm(s) {
   return String(s || "").toLowerCase()
     .replace(/[أإآ]/g, "ا")
@@ -142,6 +215,7 @@ function applyLang(lang) {
   renderStops();
   renderPlan();
   paintMap();
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "dark" : "light");
   save();
 }
 
@@ -182,7 +256,7 @@ function renderStops() {
   host.innerHTML = state.stops.map((s) => {
     const rec = state.byIso[s.iso];
     return `<article class="stop ${state.focus === s.iso ? "is-focus" : ""}" id="stop-${esc(s.iso)}">
-      <header><strong>${esc(nameOf(rec))}</strong><button type="button" data-remove="${esc(s.iso)}">${esc(t("remove"))}</button></header>
+      <header><strong><span class="flag" aria-hidden="true">${flagEmoji(s.iso)}</span> ${esc(nameOf(rec))}</strong><button type="button" data-remove="${esc(s.iso)}">${esc(t("remove"))}</button></header>
       <label>${esc(t("arrive"))}<input type="date" data-field="arrive" data-iso="${esc(s.iso)}" value="${esc(s.arrive)}"></label>
       <label>${esc(t("leave"))}<input type="date" data-field="leave" data-iso="${esc(s.iso)}" value="${esc(s.leave)}"></label>
       <label>${esc(t("purpose"))}<select data-field="purpose" data-iso="${esc(s.iso)}">
@@ -243,19 +317,38 @@ function destinationCard(rec) {
     const b = boliviaConflict();
     yfHtml += `<div class="verify">${quoteBlock(b.en, b.ar)}</div>`;
   }
-  const flags = yf.blocks.map((b) => `<p class="flag">${esc(langOf() === "ar" ? b.ar : b.en)}</p>`).join("");
+  const flags = yf.blocks.map((b) => `<p class="flag-note">${esc(langOf() === "ar" ? b.ar : b.en)}</p>`).join("");
+  const ar = langOf() === "ar";
+  const chipBits = [];
+  const band = rec.malaria?.band || "unknown";
+  chipBits.push(`<span class="chip mal-${esc(band)}">${esc(ar ? `ملاريا · ${BAND_AR[band] || band}` : `Malaria · ${band}`)}</span>`);
+  if (rec.yellowFever?.recommendation) chipBits.push(`<span class="chip yf">${esc(ar ? "حمى صفراء" : "Yellow fever")}</span>`);
+  for (const topic of rec.topics || []) {
+    const pair = TOPIC_CHIP[topic];
+    if (pair) chipBits.push(`<span class="chip ${esc(topic)}">${esc(ar ? pair[1] : pair[0])}</span>`);
+  }
+  if (notices.length) chipBits.push(`<span class="chip notice">${esc(ar ? "تنبيه" : "Notice")}</span>`);
+  const open = state.focus === rec.iso ? " open" : "";
   return `<article class="dest" id="dest-${esc(rec.iso)}">
-    <header><h3>${esc(nameOf(rec))}</h3><span class="badge ${esc(rec.status)}">${esc(statusLabel(rec.status))}</span></header>
-    <p class="meta">${esc(sourceLine(rec))}${rec.cdcUrl ? ` · <a href="${esc(rec.cdcUrl)}">CDC</a>` : ""}</p>
-    ${rec.gap ? `<p class="flag">${esc(rec.gap)}</p>` : ""}
-    <h4>${langOf() === "ar" ? "الملاريا" : "Malaria"}</h4>
-    ${malariaBody}
-    <p class="meta">${esc(mal.status === "verify" ? t("verify") : mal.status)}</p>
-    <h4>${langOf() === "ar" ? "الحمى الصفراء" : "Yellow fever"}</h4>
-    ${yfHtml || `<p class="muted">${esc(t("verify"))}</p>`}
+    <header>
+      <span class="flag" aria-hidden="true">${flagEmoji(rec.iso)}</span>
+      <div><h3>${esc(nameOf(rec))}</h3>
+      <p class="meta">${esc(sourceLine(rec))}${rec.cdcUrl ? ` · <a href="${esc(rec.cdcUrl)}">CDC</a>` : ""}</p></div>
+      <span class="badge ${esc(rec.status)}">${esc(statusLabel(rec.status))}</span>
+    </header>
+    <div class="chips">${chipBits.join("")}</div>
+    ${rec.gap ? `<p class="flag-note">${esc(rec.gap)}</p>` : ""}
     ${flags}
-    ${vaccines ? `<h4>${langOf() === "ar" ? "لقاحات مذكورة في الصفحة" : "Vaccines named on the page"}</h4><ul>${vaccines}</ul>` : ""}
-    ${noticeHtml ? `<h4>${langOf() === "ar" ? "تنبيهات بتاريخها" : "Dated notices"}</h4><ul>${noticeHtml}</ul>` : ""}
+    <details${open}>
+      <summary>${esc(t("detailsSummary"))}</summary>
+      <h4>${ar ? "الملاريا" : "Malaria"}</h4>
+      ${malariaBody}
+      <p class="meta">${esc(mal.status === "verify" ? t("verify") : mal.status)}</p>
+      <h4>${ar ? "الحمى الصفراء" : "Yellow fever"}</h4>
+      ${yfHtml || `<p class="muted">${esc(t("verify"))}</p>`}
+      ${vaccines ? `<h4>${ar ? "لقاحات مذكورة في الصفحة" : "Vaccines named on the page"}</h4><ul>${vaccines}</ul>` : ""}
+      ${noticeHtml ? `<h4>${ar ? "تنبيهات بتاريخها" : "Dated notices"}</h4><ul>${noticeHtml}</ul>` : ""}
+    </details>
   </article>`;
 }
 
@@ -301,11 +394,17 @@ function renderTimeline(today) {
   if (!tasks.length && !extra) {
     return `<p class="muted">${esc(t("empty"))}</p>`;
   }
-  return tasks.map((task) => `<article class="task"><h3>${esc(langOf() === "ar" ? task.titleAr : task.titleEn)}</h3>
+  const ordered = [...tasks].sort((a, b) => {
+    if (a.when && b.when) return a.when < b.when ? -1 : 1;
+    if (a.when) return -1;
+    if (b.when) return 1;
+    return 0;
+  });
+  return `<ol class="timeline">${ordered.map((task) => `<li><span class="dot" aria-hidden="true"></span><article class="task"><h3>${esc(langOf() === "ar" ? task.titleAr : task.titleEn)}</h3>
     ${task.when ? `<p class="when">${esc(task.when)}</p>` : ""}
     <p>${esc(langOf() === "ar" ? task.detailAr : task.detailEn)}</p>
-    ${(task.blocks || []).map((b) => `<p class="flag">${esc(langOf() === "ar" ? b.ar : b.en)}</p>`).join("")}
-  </article>`).join("") + extra + `<p class="meta">${esc(langOf() === "ar" ? "التواريخ تُحسب من أول وصول مُدخل. ليست وصفة." : "Dates count back from the first arrival you entered. They are not a prescription.")}</p>`;
+    ${(task.blocks || []).map((b) => `<p class="flag-note">${esc(langOf() === "ar" ? b.ar : b.en)}</p>`).join("")}
+  </article></li>`).join("")}</ol>` + extra + `<p class="meta">${esc(langOf() === "ar" ? "التواريخ تُحسب من أول وصول مُدخل. ليست وصفة." : "Dates count back from the first arrival you entered. They are not a prescription.")}</p>`;
 }
 
 function renderMalaria() {
@@ -532,6 +631,20 @@ function loadFromUrl() {
 function bind() {
   $("#langEn").addEventListener("click", () => applyLang("en"));
   $("#langAr").addEventListener("click", () => applyLang("ar"));
+  $("#themeToggle").addEventListener("click", () => {
+    applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+  });
+  $("#startConsult").addEventListener("click", () => {
+    showStep(1);
+    document.getElementById("stepper").scrollIntoView({ block: "start" });
+  });
+  $("#stepBtn1").addEventListener("click", () => showStep(1));
+  $("#stepBtn2").addEventListener("click", () => showStep(2));
+  $("#stepBtn3").addEventListener("click", () => showStep(3));
+  $("#toRoute").addEventListener("click", () => showStep(2));
+  $("#toPlan").addEventListener("click", () => showStep(3));
+  $("#backTraveler").addEventListener("click", () => showStep(1));
+  $("#backRoute").addEventListener("click", () => showStep(2));
   $("#discToggle").addEventListener("click", () => {
     const open = $("#discDetails").hidden;
     $("#discDetails").hidden = !open;
@@ -661,6 +774,7 @@ function bind() {
     paintMap();
     history.replaceState(null, "", location.pathname);
     sessionStorage.removeItem("tm-consult-v1");
+    showStep(1);
   });
 }
 
@@ -696,6 +810,7 @@ async function main() {
   renderStops();
   renderPlan();
   paintMap();
+  showStep(state.stops.length ? 3 : 1);
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("./sw.js").catch(() => {});
   }

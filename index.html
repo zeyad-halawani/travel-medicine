@@ -8,44 +8,82 @@
   <link rel="stylesheet" href="css/app.css">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <script>
+    try {
+      if (localStorage.getItem("tm-theme") === "dark") document.documentElement.dataset.theme = "dark";
+    } catch (e) {}
+  </script>
 </head>
 <body>
   <a class="skip" href="#plan" data-i18n="skip">Skip to the plan</a>
-  <header class="top">
-    <div class="brand">
-      <h1 data-i18n="title">Travel consult desk</h1>
-      <p data-i18n="who">Dr. Zeyad Halawani · Family medicine · Medina</p>
+  <header class="hero">
+    <div class="nav">
+      <div class="brand">
+        <div class="mark" aria-hidden="true">✦</div>
+        <div>
+          <h1 data-i18n="title">Travel consult desk</h1>
+          <p data-i18n="who">Dr. Zeyad Halawani · Family medicine · Medina</p>
+        </div>
+      </div>
+      <div class="nav-actions">
+        <button type="button" id="themeToggle" class="icon-btn" aria-pressed="false">Dark</button>
+        <div class="langs" role="group" aria-label="Language">
+          <button type="button" id="langEn" aria-pressed="true">English</button>
+          <button type="button" id="langAr" aria-pressed="false">العربية</button>
+        </div>
+      </div>
     </div>
-    <div class="langs" role="group" aria-label="Language">
-      <button type="button" id="langEn" aria-pressed="true">English</button>
-      <button type="button" id="langAr" aria-pressed="false">العربية</button>
+    <div class="hero-copy">
+      <p class="eyebrow" data-i18n="eyebrow">Pre-travel consult</p>
+      <h2 data-i18n="heroTitle">A desk for the visit in front of you.</h2>
+      <p class="lede" data-i18n="lede">Set the traveler, add the route, then open a plan you can counsel from and print. Same sources. Clearer desk.</p>
+      <button type="button" class="cta" id="startConsult" data-i18n="start">Start a consult</button>
     </div>
+    <section id="safetyBanner" class="banner" aria-labelledby="disclaimerHeading">
+      <h2 id="disclaimerHeading" class="visually-hidden" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Disclaimer</h2>
+      <p lang="en">Educational reference—not a prescription. Verify the traveler’s needs and current entry rules.</p>
+      <p lang="ar" dir="rtl">مرجع تعليمي، لا يُعد وصفة طبية. تحقّق من احتياجات المسافر واشتراطات الدخول السارية.</p>
+      <div class="row">
+        <button type="button" id="discToggle" aria-expanded="false" aria-controls="discDetails">Details · التفاصيل</button>
+        <button type="button" id="discDismiss">Close · إغلاق</button>
+      </div>
+      <div id="discDetails" hidden>
+        <p lang="en">This map supports, but does not replace, an individualized pre-travel consultation. Risks vary by route, season, activities and medical history. Vaccine and medicine choices require clinical assessment. Entry rules and outbreak notices can change. Verification is limited to the topics and dates shown; unreviewed destinations remain unverified.</p>
+        <p lang="ar" dir="rtl">تساعد هذه الخريطة في المشورة قبل السفر ولا تستبدل التقييم الفردي. تختلف المخاطر حسب المسار والموسم والأنشطة والتاريخ المرضي. يتطلب اختيار اللقاحات والأدوية تقييمًا طبيًا. قد تتغير اشتراطات الدخول وتنبيهات التفشي. يقتصر التحقق على الموضوعات والتواريخ المعروضة، وتبقى الوجهات غير المراجعة موسومة بذلك.</p>
+      </div>
+    </section>
   </header>
-  <section id="safetyBanner" class="banner" aria-labelledby="disclaimerHeading">
-    <h2 id="disclaimerHeading" class="visually-hidden" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Disclaimer</h2>
-    <p lang="en">Educational reference—not a prescription. Verify the traveler’s needs and current entry rules.</p>
-    <p lang="ar" dir="rtl">مرجع تعليمي، لا يُعد وصفة طبية. تحقّق من احتياجات المسافر واشتراطات الدخول السارية.</p>
-    <div class="row">
-      <button type="button" id="discToggle" aria-expanded="false" aria-controls="discDetails">Details · التفاصيل</button>
-      <button type="button" id="discDismiss">Close · إغلاق</button>
-    </div>
-    <div id="discDetails" hidden>
-      <p lang="en">This map supports, but does not replace, an individualized pre-travel consultation. Risks vary by route, season, activities and medical history. Vaccine and medicine choices require clinical assessment. Entry rules and outbreak notices can change. Verification is limited to the topics and dates shown; unreviewed destinations remain unverified.</p>
-      <p lang="ar" dir="rtl">تساعد هذه الخريطة في المشورة قبل السفر ولا تستبدل التقييم الفردي. تختلف المخاطر حسب المسار والموسم والأنشطة والتاريخ المرضي. يتطلب اختيار اللقاحات والأدوية تقييمًا طبيًا. قد تتغير اشتراطات الدخول وتنبيهات التفشي. يقتصر التحقق على الموضوعات والتواريخ المعروضة، وتبقى الوجهات غير المراجعة موسومة بذلك.</p>
-    </div>
-  </section>
   <button type="button" id="discReopen" class="reopen" hidden>Disclaimer · التنبيه</button>
+
+  <nav class="stepper" id="stepper" aria-label="Consult steps">
+    <div class="stepper-card">
+      <div class="steps">
+        <button type="button" id="stepBtn1" aria-current="step"><span class="step-no">1</span><span class="step-label" data-i18n="step1">Traveler</span></button>
+        <button type="button" id="stepBtn2"><span class="step-no">2</span><span class="step-label" data-i18n="step2">Itinerary</span></button>
+        <button type="button" id="stepBtn3"><span class="step-no">3</span><span class="step-label" data-i18n="step3">Plan</span></button>
+      </div>
+      <div class="progress" id="progress" role="progressbar" aria-valuemin="1" aria-valuemax="3" aria-valuenow="1">
+        <span id="progressBar"></span>
+      </div>
+    </div>
+  </nav>
+
   <main class="layout">
-    <div class="desk">
-      <section class="card" aria-labelledby="travelerHeading">
-        <h2 id="travelerHeading" data-i18n="step1">Traveler</h2>
+    <section class="panel" id="panel1" data-step="1">
+      <div class="card">
+        <div class="panel-head">
+          <div>
+            <h2 id="travelerHeading" data-i18n="step1">Traveler</h2>
+            <p class="muted" data-i18n="step1Help">These choices only flag cautions. They do not write a prescription.</p>
+          </div>
+        </div>
         <form id="profile">
           <div class="grid profile">
-            <label class="span2"><span data-i18n="age">Age</span><select id="age"></select></label>
+            <label class="span2 field"><span data-i18n="age">Age</span><select id="age"></select></label>
             <label class="check"><input id="pregnant" type="checkbox"><span data-i18n="pregnant">Pregnant</span></label>
             <label class="check"><input id="planning" type="checkbox"><span data-i18n="planning">Planning pregnancy</span></label>
             <label class="check span2"><input id="breast" type="checkbox"><span data-i18n="breast">Breastfeeding an infant under 5 kg</span></label>
-            <label class="span2"><span data-i18n="immune">Immune status</span>
+            <label class="span2 field"><span data-i18n="immune">Immune status</span>
               <select id="immune">
                 <option value="none" data-i18n="immuneNone">No known compromise</option>
                 <option value="limited" data-i18n="immuneLimited">Limited compromise or stable HIV</option>
@@ -55,7 +93,7 @@
             <label class="check"><input id="seizure" type="checkbox"><span data-i18n="seizure">Seizure disorder</span></label>
             <label class="check"><input id="psych" type="checkbox"><span data-i18n="psych">Psychiatric illness in the mefloquine warning</span></label>
             <label class="check span2"><input id="conduction" type="checkbox"><span data-i18n="conduction">Cardiac conduction abnormality</span></label>
-            <label><span data-i18n="g6pd">G6PD</span>
+            <label class="field"><span data-i18n="g6pd">G6PD</span>
               <select id="g6pd">
                 <option value="unknown" data-i18n="g6pdUnknown">Not tested</option>
                 <option value="normal" data-i18n="g6pdNormal">Normal quantitative test</option>
@@ -75,8 +113,8 @@
               <label class="check"><input id="priorTyphoid" type="checkbox"><span data-i18n="priorTyphoid">Typhoid vaccine</span></label>
               <label class="check"><input id="priorRabies" type="checkbox"><span data-i18n="priorRabies">Rabies pre-exposure</span></label>
               <label class="check"><input id="priorMmr" type="checkbox"><span data-i18n="priorMmr">MMR up to date</span></label>
-              <label><span data-i18n="menDate">MenACWY date</span><input id="menDate" type="date"></label>
-              <label><span data-i18n="menType">MenACWY type</span>
+              <label class="field"><span data-i18n="menDate">MenACWY date</span><input id="menDate" type="date"></label>
+              <label class="field"><span data-i18n="menType">MenACWY type</span>
                 <select id="menType">
                   <option value="unknown" data-i18n="menUnknown">Type not written</option>
                   <option value="conjugate" data-i18n="menConj">Conjugate ACYW or ACYWX</option>
@@ -88,40 +126,57 @@
           <label class="check"><input id="jeOpt" type="checkbox"><span data-i18n="jeOpt">Include Japanese encephalitis dates</span></label>
           <label class="check"><input id="rabiesOpt" type="checkbox"><span data-i18n="rabiesOpt">Include rabies pre-exposure dates</span></label>
         </form>
-      </section>
-      <section class="card" aria-labelledby="itinHeading">
-        <h2 id="itinHeading" data-i18n="step2">Itinerary</h2>
-        <div class="search">
-          <label class="visually-hidden" for="q" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Search</label>
-          <input id="q" type="search" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="searchList" aria-autocomplete="list">
-          <ul id="searchList" role="listbox" hidden></ul>
+        <div class="nav-row">
+          <button type="button" class="solid" id="toRoute" data-i18n="nextRoute">Continue to the route</button>
         </div>
-        <label><span data-i18n="origin">Country of arrival, for Hajj or Umrah rules</span><select id="origin"></select></label>
-        <div id="stops"></div>
-      </section>
-    </div>
-    <div class="stage">
-      <section class="card map-wrap" aria-labelledby="mapHeading">
-        <div class="map-bar">
-          <h2 id="mapHeading" data-i18n="mapLabel">Destination map. Color marks a topic, not a risk score.</h2>
-          <div class="tools">
-            <button type="button" id="zoomIn" data-i18n="zoomIn">Zoom in</button>
-            <button type="button" id="zoomOut" data-i18n="zoomOut">Zoom out</button>
-            <button type="button" id="zoomReset" data-i18n="zoomReset">Reset map</button>
+      </div>
+    </section>
+
+    <section class="panel" id="panel2" data-step="2" hidden>
+      <div class="route">
+        <section class="card" aria-labelledby="itinHeading">
+          <h2 id="itinHeading" data-i18n="step2">Itinerary</h2>
+          <p class="muted" data-i18n="step2Help">Search in English or Arabic. A click on the map adds the same stop.</p>
+          <div class="search">
+            <label class="visually-hidden" for="q" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Search</label>
+            <input id="q" type="search" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="searchList" aria-autocomplete="list">
+            <ul id="searchList" role="listbox" hidden></ul>
           </div>
-        </div>
-        <div class="map-scroll"><svg id="map" role="group"></svg></div>
-        <p class="legend">
-          <span><i class="swatch" style="background:#7fbfa8"></i><span data-i18n="legendPresent">Prophylaxis named for some areas</span></span>
-          <span><i class="swatch" style="background:#c9dd72"></i><span data-i18n="legendLimited">Limited or mixed areas</span></span>
-          <span><i class="swatch" style="background:#efe6d4"></i><span data-i18n="legendNone">No prophylaxis table, or none recommended</span></span>
-          <span><i class="swatch" style="background:#d9c7b0"></i><span data-i18n="legendUnknown">Malaria not established</span></span>
-          <span><i class="swatch" style="background:#fff;border:2px solid #8d3b16"></i><span data-i18n="legendNotice">Notice on file</span></span>
-        </p>
-      </section>
+          <label class="field"><span data-i18n="origin">Country of arrival, for Hajj or Umrah rules</span><select id="origin"></select></label>
+          <div id="stops"></div>
+          <div class="nav-row">
+            <button type="button" class="ghost" id="backTraveler" data-i18n="back">Back</button>
+            <button type="button" class="solid" id="toPlan" data-i18n="nextPlan">Open the plan</button>
+          </div>
+        </section>
+        <section class="card map-wrap" aria-labelledby="mapHeading">
+          <div class="map-bar">
+            <h2 id="mapHeading" data-i18n="mapLabel">Destination map. Color marks a topic, not a risk score.</h2>
+            <div class="tools">
+              <button type="button" id="zoomIn" data-i18n="zoomIn">Zoom in</button>
+              <button type="button" id="zoomOut" data-i18n="zoomOut">Zoom out</button>
+              <button type="button" id="zoomReset" data-i18n="zoomReset">Reset map</button>
+            </div>
+          </div>
+          <div class="map-scroll"><svg id="map" role="group"></svg></div>
+          <p class="legend">
+            <span><i class="swatch" style="background:#1f8f86"></i><span data-i18n="legendPresent">Prophylaxis named for some areas</span></span>
+            <span><i class="swatch" style="background:#d2b15a"></i><span data-i18n="legendLimited">Limited or mixed areas</span></span>
+            <span><i class="swatch" style="background:#efe6d6"></i><span data-i18n="legendNone">No prophylaxis table, or none recommended</span></span>
+            <span><i class="swatch" style="background:#c9b5a2"></i><span data-i18n="legendUnknown">Malaria not established</span></span>
+            <span><i class="swatch" style="background:transparent;border:2px solid #c4552a"></i><span data-i18n="legendNotice">Notice on file</span></span>
+          </p>
+        </section>
+      </div>
+    </section>
+
+    <section class="panel" id="panel3" data-step="3" hidden>
       <section class="card" id="plan" aria-labelledby="planHeading">
-        <div class="map-bar">
-          <h2 id="planHeading" data-i18n="step3">Plan</h2>
+        <div class="plan-bar">
+          <div>
+            <h2 id="planHeading" data-i18n="step3">Plan</h2>
+            <p class="muted" data-i18n="step3Help">Counsel from the tab that matches the moment in the visit.</p>
+          </div>
           <div class="tools">
             <button type="button" id="share" data-i18n="share">Copy link</button>
             <button type="button" id="print" data-i18n="print">Print</button>
@@ -137,8 +192,11 @@
           <button type="button" class="tab" role="tab" data-tab="hand" aria-selected="false" data-i18n="tabHand">Handout</button>
         </div>
         <div id="planBody"></div>
+        <div class="nav-row">
+          <button type="button" class="ghost" id="backRoute" data-i18n="backRoute">Back to the route</button>
+        </div>
       </section>
-    </div>
+    </section>
   </main>
   <footer class="foot">
     <p data-i18n="footer">Selected topics checked against linked official sources on 24 Nov 2026. Source dates and each destination’s status are shown separately. Unreviewed means no primary page was read.</p>

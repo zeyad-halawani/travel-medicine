@@ -1,4 +1,4 @@
-const CACHE = "travel-consult-v1";
+const CACHE = "travel-consult-v2";
 const FILES = [
   "./",
   "./index.html",
@@ -11,6 +11,10 @@ const FILES = [
   "./data/world.json",
   "./manifest.webmanifest",
   "./icons/icon.svg",
+  "./fonts/inter-400.woff2",
+  "./fonts/inter-600.woff2",
+  "./fonts/plex-400.woff2",
+  "./fonts/plex-600.woff2",
 ];
 
 self.addEventListener("install", (event) => {

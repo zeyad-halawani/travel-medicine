@@ -94,7 +94,9 @@ for (const w of widths) {
   check("country remains after dismiss", (await page.$("#dest-SAU")) !== null);
   await page.click("#discReopen");
   check("banner returns", await page.$eval("#safetyBanner", (el) => el.hidden) === false);
-  await page.screenshot({ path: join(shots, "mobile-ar-umrah.png"), fullPage: true });
+  await page.screenshot({ path: join(shots, "mobile-ar-plan.png"), fullPage: false });
+  await page.click("#stepBtn1");
+  await page.screenshot({ path: join(shots, "mobile-ar-traveler.png"), fullPage: false });
   check("mobile ar shot", true);
   check("no error ar mobile", errors.length === 0, errors.join(";"));
   await page.close();
@@ -102,6 +104,8 @@ for (const w of widths) {
 
 {
   const { page, errors } = await open(base + "/", 1280, 900);
+  await page.click("#toRoute");
+  await page.waitForSelector("#panel2:not([hidden])");
   await page.type("#q", "إثيوبيا");
   await page.waitForSelector("#searchList li");
   await page.click("#searchList li");
@@ -112,11 +116,16 @@ for (const w of widths) {
   check("arabic search adds Ethiopia", names.some((n) => /Ethiopia|إثيوبيا/.test(n)), names.join(","));
   check("keyboard search adds Kenya", names.some((n) => /Kenya|كينيا/.test(n)), names.join(","));
   await page.$eval("#stop-ETH input[data-field=arrive]", (el) => { el.value = "2026-12-20"; el.dispatchEvent(new Event("change", { bubbles: true })); });
+  await page.click("#toPlan");
+  await page.waitForSelector("#panel3:not([hidden])");
   await page.click(".tab[data-tab=vax]");
   await page.waitForSelector(".task");
   const vax = await page.$eval("#planBody", (el) => el.innerText);
   check("timeline mentions yellow fever", /Yellow fever/i.test(vax), vax.slice(0, 180));
+  await page.screenshot({ path: join(shots, "desktop-en-timeline.png"), fullPage: false });
+  await page.click("#stepBtn1");
   await page.click("#pregnant");
+  await page.click("#stepBtn3");
   await page.click(".tab[data-tab=mal]");
   await page.waitForSelector(".drug.avoid");
   const avoided = await page.$$eval(".drug.avoid strong", (els) => els.map((el) => el.textContent));
@@ -126,7 +135,9 @@ for (const w of widths) {
   await page.click(".tab[data-tab=hand]");
   const hand = await page.$eval("#planBody", (el) => el.innerText);
   check("handout both languages", /Draft counseling aid/.test(hand) && /ورقة المسافر/.test(hand));
-  await page.screenshot({ path: join(shots, "desktop-en-itinerary.png"), fullPage: true });
+  await page.screenshot({ path: join(shots, "desktop-en-plan.png"), fullPage: false });
+  await page.click("#stepBtn2");
+  await page.screenshot({ path: join(shots, "desktop-en-route.png"), fullPage: false });
   await page.emulateMediaType("print");
   await page.screenshot({ path: join(shots, "print-handout.png"), fullPage: true });
   check("no error desktop flow", errors.length === 0, errors.join(";"));
@@ -141,6 +152,20 @@ for (const w of widths) {
   check("ethiopia origin yf and polio tables", /older than 9 months/.test(text) && /Table B/.test(text));
   check("no error hajj", errors.length === 0, errors.join(";"));
   await page.screenshot({ path: join(shots, "desktop-en-hajj.png"), fullPage: true });
+  await page.evaluate(() => localStorage.setItem("tm-theme", "dark"));
+  await page.reload({ waitUntil: "networkidle0" });
+  await page.waitForSelector("#map path");
+  const dark = await page.evaluate(() => document.documentElement.dataset.theme);
+  check("dark mode on", dark === "dark", dark || "missing");
+  const overflowDark = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  check("dark desktop no overflow", overflowDark <= 2, String(overflowDark));
+  await page.screenshot({ path: join(shots, "desktop-en-dark.png"), fullPage: false });
+  await page.click("#langAr");
+  await page.setViewport({ width: 390, height: 844 });
+  const overflowArDark = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  check("dark arabic mobile no overflow", overflowArDark <= 2, String(overflowArDark));
+  check("dark arabic dir", await page.evaluate(() => document.documentElement.dir) === "rtl");
+  await page.screenshot({ path: join(shots, "mobile-ar-dark.png"), fullPage: false });
   await page.close();
 }
 
